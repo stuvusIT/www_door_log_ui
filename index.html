@@ -1,0 +1,102 @@
+<!doctype HTML>
+
+<html>
+
+<head>
+    <title>stuvus Door Access Log</title>
+    <style>
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            padding-top: 1px;
+            padding-bottom: 1px;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+    </style>
+    <script>
+        const API = "https://door.stuvus.uni-stuttgart.de/log/api/";
+
+        function prettyTime(timestamp) {
+            let d = new Date(timestamp * 1000)
+            let year = d.getFullYear(),
+                month = ('0' + (d.getMonth() + 1)).slice(-2),
+                day = ('0' + d.getDate()).slice(-2),
+                hours = d.getHours(),
+                min = ('0' + d.getMinutes()).slice(-2);
+            return year + '/' + month + '/' + day + ', ' + hours + ':' + min;
+        }
+
+        function createTableHeader() {
+            let row = document.createElement('tr');
+            row.appendChild(document.createElement('th')).appendChild(document.createTextNode("Time"));
+            row.appendChild(document.createElement('th')).appendChild(document.createTextNode("Result"));
+            row.appendChild(document.createElement('th')).appendChild(document.createTextNode("Name"));
+            row.appendChild(document.createElement('th')).appendChild(document.createTextNode("Tag"));
+            return row;
+        }
+
+        function createTableRow(result) {
+            let row = document.createElement('tr');
+            row.appendChild(document.createElement('td')).appendChild(document.createTextNode(prettyTime(result.time)));
+            row.appendChild(document.createElement('td')).appendChild(document.createTextNode(result.response.outcome));
+            row.appendChild(document.createElement('td')).appendChild(document.createTextNode(result.response.name));
+            row.appendChild(document.createElement('td')).appendChild(document.createTextNode(result.token));
+            return row;
+        }
+
+        function setResult(results) {
+            console.log(results);
+            let table = document.getElementById("results");
+            table.replaceChildren();
+            table.appendChild(createTableHeader());
+            for (let key in results) {
+                table.appendChild(createTableRow(results[key]));
+            }
+        }
+
+        function go() {
+            let returnSuccess = document.getElementById("success").checked;
+            let returnFailed = document.getElementById("failed").checked;
+            if (!returnSuccess && !returnFailed) {
+                setResult([]);
+                return;
+            }
+            let date = document.getElementById("date").valueAsDate;
+            let timeStart = (date.getTime() / 1000) + (date.getTimezoneOffset() * 60);
+            let timeEnd = timeStart + 60 * 60 * 24;
+
+            let uri = API + "?time_min=" + timeStart + "&time_max=" + timeEnd;
+            if (returnSuccess && !returnFailed) {
+                uri += "&outcome=sucesss";
+            }
+            if (returnFailed && !returnSuccess) {
+                uri += "&outcome=unknown";
+            }
+
+            fetch(uri)
+                .then(res => res.json())
+                .then(out => setResult(out))
+                .catch(err => alert(err));
+        }
+    </script>
+</head>
+
+<body>
+    <h1> stuvus Door Access Log </h1>
+    <form action="javascript:go();">
+        <input type="checkbox" id="success" name="sucess" value="success">
+        <label for="sucess"> Successful requests</label><br>
+        <input type="checkbox" id="failed" name="failed" value="failed" checked>
+        <label for="failed"> Failed requests (Unknown card)</label><br>
+        <input type="date" name="date" id="date" />
+        <label for="date"> Date of request</label><br>
+        <input type="submit" id="go" name="go" value="Go" action="alert(1);" />
+    </form>
+    <table id=results>
+    </table>
+</body>
+
+</html>
